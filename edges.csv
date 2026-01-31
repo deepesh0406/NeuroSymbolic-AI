@@ -1,0 +1,9 @@
+source,target,label
+PatchyOpacity,LowerLobe,located_in
+PatchyOpacity,BacterialPattern,suggests
+GroundGlass,ViralPattern,suggests
+BacterialPattern,Pneumonia,indicates
+ViralPattern,Normal,possible
+Pneumonia,Antibiotics,treated_with
+Pneumonia,WHO_Guideline,supported_by
+Normal,Rest,managed_with

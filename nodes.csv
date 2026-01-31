@@ -1,0 +1,11 @@
+id,type
+PatchyOpacity,Finding
+GroundGlass,Finding
+LowerLobe,Location
+BacterialPattern,Pattern
+ViralPattern,Pattern
+Pneumonia,Disease
+Normal,Disease
+Antibiotics,Treatment
+Rest,Treatment
+WHO_Guideline,Guideline

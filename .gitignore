@@ -1,0 +1,26 @@
+# python
+__pycache__/
+*.pyc
+
+# environments
+venv/
+.venv/
+venv311/
+
+# models
+models/*.pth
+models/*.pt
+
+# dataset
+data/
+dataset/
+
+# large outputs
+results/*.html
+results/*.pth
+results/*.pt
+results/*.png
+results/plots/*.png
+
+# temp
+.ipynb_checkpoints/
