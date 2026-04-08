@@ -1,28 +1,46 @@
 import os
-from torch.utils.data import Dataset
-from torchvision import transforms
 from PIL import Image
+from torch.utils.data import Dataset
+
 
 class ChestXrayDataset(Dataset):
+
     def __init__(self, root_dir, transform=None):
-        self.image_paths = []
-        self.labels = []
+
+        self.root_dir = root_dir
         self.transform = transform
 
-        for label_name in ["NORMAL", "PNEUMONIA"]:
-            label_dir = os.path.join(root_dir, label_name)
-            label = 0 if label_name == "NORMAL" else 1
+        self.image_paths = []
+        self.labels = []
 
-            for img in os.listdir(label_dir):
-                if img.lower().endswith((".png", ".jpg", ".jpeg")):
-                    self.image_paths.append(os.path.join(label_dir, img))
-                    self.labels.append(label)
+        classes = ["NORMAL", "PNEUMONIA"]
+
+        for label, class_name in enumerate(classes):
+
+            class_dir = os.path.join(root_dir, class_name)
+
+            if not os.path.exists(class_dir):
+                raise Exception(f"Folder not found: {class_dir}")
+
+            for img_name in os.listdir(class_dir):
+
+                img_path = os.path.join(class_dir, img_name)
+
+                self.image_paths.append(img_path)
+                self.labels.append(label)
+
 
     def __len__(self):
+
         return len(self.image_paths)
 
+
     def __getitem__(self, idx):
-        image = Image.open(self.image_paths[idx]).convert("RGB")
+
+        img_path = self.image_paths[idx]
+
+        image = Image.open(img_path).convert("RGB")
+
         label = self.labels[idx]
 
         if self.transform:

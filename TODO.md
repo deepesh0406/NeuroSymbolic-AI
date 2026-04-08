@@ -1,8 +1,12 @@
-# TODO: Fix knowledge_graph.py for Better Knowledge Graph Representation
+# NeuroSymbolic AI - Push to GitHub TODO
 
-## Steps to Complete:
-- [x] Modify build_graph function to load nodes from nodes.csv and edges from edges.csv instead of hardcoding.
-- [x] Fix export_neo4j function: change header from "relation" to "label" to match the edge data.
-- [x] Fix export_rdf function: change data.get("relation", "related_to") to data.get("label", "related_to").
-- [x] Update main function to save static graph as "knowledge_graph_final.png" to match existing file.
-- [x] Test the changes by running the script and verifying outputs.
+## Current Status
+Repo ready with src updates (dataset/efficientnet/eval/gradcam etc.), new src/models/ reasoning/, plot_results.py generating results/plots/, deletions.
+
+## Steps:
+- [ ] 1. Update .gitignore for docs/PDFs/dupe dirs
+- [ ] 2. git add src/ plot_results.py results/plots/ *.csv *.png (relevant)
+- [ ] 3. git add -u
+- [ ] 4. git commit
+- [ ] 5. git push
+- [ ] 6. Done

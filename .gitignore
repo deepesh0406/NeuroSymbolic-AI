@@ -24,3 +24,17 @@ results/plots/*.png
 
 # temp
 .ipynb_checkpoints/
+
+# documents and junk
+*.docx
+*.pdf
+"plag report.pdf"
+"major project*"
+"final major project*"
+"Neurosymbolic-173.pdf"
+
+# duplicate plot dirs
+results/plotss/
+results/plotsss/
+results/plotss*/
+results/plotsss*/

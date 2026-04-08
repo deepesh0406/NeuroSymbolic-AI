@@ -1,195 +1,252 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-import plotly.graph_objects as go
+import os
+
 
 # =====================================================
-# NODE COLORS (paper style)
+# COLOR SCHEME (IEEE publication style)
 # =====================================================
 
 COLORS = {
-    "Finding": "#ff6b6b",
-    "Location": "#6bcBef",
-    "Pattern": "#ffd93d",
-    "Disease": "#6dd56d",
-    "Treatment": "#d291ff",
-    "Guideline": "#ffa600"
+
+    "Input": "#94a3b8",
+    "CNN": "#3b82f6",
+    "Sign": "#ef4444",
+    "Reasoning": "#10b981",
+    "KG": "#0ea5e9",
+    "Disease": "#22c55e",
+    "Treatment": "#a855f7",
+    "Guideline": "#f59e0b",
+    "Output": "#dc2626"
 }
 
 
 # =====================================================
-# BUILD GRAPH (dynamic)
+# BUILD GRAPH
 # =====================================================
 
-def build_graph(cnn_outputs):
+def build_graph(sign_probs):
 
     G = nx.DiGraph()
 
-    # ---------- Add CNN findings dynamically ----------
-    for finding, conf, location in cnn_outputs:
+    # Layer 0 — Input
+    G.add_node("Chest X-ray Image", type="Input")
 
-        G.add_node(finding, type="Finding")
-        G.add_node(location, type="Location")
+    # Layer 1 — CNN
+    G.add_node("EfficientNetV2 CNN\n(Feature Extraction)", type="CNN")
 
-        G.add_edge(finding, location, label="located_in")
+    G.add_edge(
+        "Chest X-ray Image",
+        "EfficientNetV2 CNN\n(Feature Extraction)",
+        label="input"
+    )
 
-    # ---------- Medical knowledge base ----------
-    rules = [
 
-        ("PatchyOpacity", "BacterialPattern", "suggests"),
-        ("GroundGlass", "ViralPattern", "suggests"),
+    # Layer 2 — Sign prediction
+    sign_nodes = []
 
-        ("BacterialPattern", "Pneumonia", "indicates"),
-        ("ViralPattern", "Normal", "possible"),
+    for sign, prob in sign_probs.items():
 
-        ("Pneumonia", "Antibiotics", "treated_with"),
-        ("Normal", "Rest", "managed_with"),
+        node = f"{sign}\nP={prob:.2f}"
 
-        ("Pneumonia", "WHO_Guideline", "supported_by")
-    ]
+        G.add_node(node, type="Sign")
 
-    for s, t, l in rules:
-        G.add_edge(s, t, label=l)
+        G.add_edge(
+            "EfficientNetV2 CNN\n(Feature Extraction)",
+            node,
+            label="predicts"
+        )
 
-    # ---------- Add missing nodes with types ----------
-    types = {
-        "BacterialPattern": "Pattern",
-        "ViralPattern": "Pattern",
-        "Pneumonia": "Disease",
-        "Normal": "Disease",
-        "Antibiotics": "Treatment",
-        "Rest": "Treatment",
-        "WHO_Guideline": "Guideline"
-    }
+        sign_nodes.append(node)
 
-    for n, t in types.items():
-        if n not in G:
-            G.add_node(n, type=t)
-        else:
-            G.nodes[n]["type"] = t
+
+    # Layer 3 — Symbolic reasoning
+    G.add_node("Symbolic Reasoning Layer", type="Reasoning")
+
+    for node in sign_nodes:
+
+        G.add_edge(
+            node,
+            "Symbolic Reasoning Layer",
+            label="input"
+        )
+
+
+    # Layer 4 — Knowledge graph
+    G.add_node("Medical Knowledge Graph", type="KG")
+
+    G.add_edge(
+        "Symbolic Reasoning Layer",
+        "Medical Knowledge Graph",
+        label="semantic inference"
+    )
+
+
+    # Layer 5 — Disease
+    G.add_node("Pneumonia", type="Disease")
+
+    G.add_edge(
+        "Medical Knowledge Graph",
+        "Pneumonia",
+        label="diagnosis"
+    )
+
+
+    # Layer 6 — Treatment
+    G.add_node("Antibiotics", type="Treatment")
+
+    G.add_edge(
+        "Pneumonia",
+        "Antibiotics",
+        label="treated_with"
+    )
+
+
+    # Layer 7 — Guideline
+    G.add_node("WHO Clinical Guideline", type="Guideline")
+
+    G.add_edge(
+        "Pneumonia",
+        "WHO Clinical Guideline",
+        label="supported_by"
+    )
+
+
+    # Layer 8 — Final explainable output
+    G.add_node(
+        "Explainable Clinical Decision:\nPneumonia Detected",
+        type="Output"
+    )
+
+    G.add_edge(
+        "Pneumonia",
+        "Explainable Clinical Decision:\nPneumonia Detected",
+        label="final_output"
+    )
 
     return G
 
 
 # =====================================================
-# REASONING (auto path detection)
+# DRAW LAYERED GRAPH (NO OVERLAP)
 # =====================================================
 
-def find_reasoning_path(G):
+def draw_graph(G):
 
-    # BFS to disease
-    for node, data in G.nodes(data=True):
-        if data["type"] == "Finding":
-            for target in nx.descendants(G, node):
-                if G.nodes[target]["type"] == "Disease":
-                    return nx.shortest_path(G, node, target)
+    os.makedirs("results", exist_ok=True)
 
-    return []
+    plt.figure(figsize=(16,14))
+
+    pos = {}
+
+    # Fixed hierarchical layout
+
+    pos["Chest X-ray Image"] = (0, 10)
+
+    pos["EfficientNetV2 CNN\n(Feature Extraction)"] = (0, 8)
+
+    sign_positions = [-4, -1.5, 1.5, 4]
+
+    sign_nodes = [n for n,d in G.nodes(data=True) if d["type"]=="Sign"]
+
+    for i,node in enumerate(sign_nodes):
+
+        pos[node] = (sign_positions[i], 6)
 
 
-# =====================================================
-# STATIC CLEAN FIGURE
-# =====================================================
+    pos["Symbolic Reasoning Layer"] = (0, 4)
 
-def save_static_graph(G, path):
+    pos["Medical Knowledge Graph"] = (0, 2)
 
-    pos = nx.spring_layout(G, k=1.4, seed=42)
+    pos["Pneumonia"] = (0, 0)
 
-    plt.figure(figsize=(14,10))
+    pos["Antibiotics"] = (-3, -2)
 
-    # draw nodes
-    for t, color in COLORS.items():
-        nodes = [n for n,d in G.nodes(data=True) if d["type"] == t]
-        nx.draw_networkx_nodes(G, pos, nodelist=nodes, node_color=color, node_size=2000)
+    pos["WHO Clinical Guideline"] = (3, -2)
 
-    nx.draw_networkx_labels(G, pos, font_size=9)
+    pos["Explainable Clinical Decision:\nPneumonia Detected"] = (0, -4)
 
-    # edges
-    nx.draw_networkx_edges(G, pos, width=2, arrows=True)
 
-    labels = nx.get_edge_attributes(G, "label")
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_size=8)
+    # Draw nodes by type
 
-    legend = [Line2D([0],[0], marker='o', color='w', label=k,
-                     markerfacecolor=v, markersize=12) for k,v in COLORS.items()]
-    plt.legend(handles=legend)
+    for t,color in COLORS.items():
+
+        nodes = [n for n,d in G.nodes(data=True) if d["type"]==t]
+
+        nx.draw_networkx_nodes(
+
+            G,
+            pos,
+            nodelist=nodes,
+            node_color=color,
+            node_size=3500,
+            edgecolors="black"
+        )
+
+
+    nx.draw_networkx_labels(
+
+        G,
+        pos,
+        font_size=9,
+        font_weight="bold"
+    )
+
+
+    nx.draw_networkx_edges(
+
+        G,
+        pos,
+        arrows=True,
+        width=2
+    )
+
+
+    edge_labels = nx.get_edge_attributes(G,'label')
+
+    nx.draw_networkx_edge_labels(
+
+        G,
+        pos,
+        edge_labels=edge_labels,
+        font_size=8
+    )
+
+
+    # Layer labels (important for paper)
+
+    plt.text(-7,10,"Layer 0: Medical Image Input",fontsize=11,fontweight="bold")
+    plt.text(-7,8,"Layer 1: Neural Feature Extraction",fontsize=11,fontweight="bold")
+    plt.text(-7,6,"Layer 2: Medical Sign Prediction",fontsize=11,fontweight="bold")
+    plt.text(-7,4,"Layer 3: Symbolic Reasoning",fontsize=11,fontweight="bold")
+    plt.text(-7,2,"Layer 4: Knowledge Graph Inference",fontsize=11,fontweight="bold")
+    plt.text(-7,0,"Layer 5: Disease Diagnosis",fontsize=11,fontweight="bold")
+    plt.text(-7,-2,"Layer 6: Clinical Knowledge",fontsize=11,fontweight="bold")
+    plt.text(-7,-4,"Layer 7: Explainable Output",fontsize=11,fontweight="bold")
+
+
+    plt.title(
+
+        "Neuro-Symbolic Knowledge Graph for Explainable Medical Diagnosis",
+
+        fontsize=16,
+        fontweight="bold"
+    )
+
 
     plt.axis("off")
-    plt.tight_layout()
-    plt.savefig(path, dpi=300)
+
+
+    plt.savefig(
+
+        "results/knowledge_graph_PUBLICATION_READY.png",
+
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+
     plt.close()
-
-
-# =====================================================
-# INTERACTIVE PLOTLY GRAPH
-# =====================================================
-
-def save_interactive_graph(G, path, highlight_path=None):
-
-    pos = nx.spring_layout(G, k=1.4, seed=42)
-
-    edge_x, edge_y = [], []
-
-    for e in G.edges():
-        x0,y0 = pos[e[0]]
-        x1,y1 = pos[e[1]]
-        edge_x += [x0,x1,None]
-        edge_y += [y0,y1,None]
-
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=1,color='#888'),
-        hoverinfo='none',
-        mode='lines'
-    )
-
-    node_x, node_y, colors = [],[],[]
-
-    for node,data in G.nodes(data=True):
-        x,y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        colors.append(COLORS[data["type"]])
-
-    node_trace = go.Scatter(
-        x=node_x, y=node_y,
-        mode='markers+text',
-        text=list(G.nodes()),
-        textposition="top center",
-        marker=dict(size=25, color=colors)
-    )
-
-    fig = go.Figure(data=[edge_trace,node_trace])
-    fig.write_html(path)
-
-
-# =====================================================
-# NEO4J EXPORT
-# =====================================================
-
-def export_neo4j(G, path):
-
-    with open(path, "w") as f:
-
-        for n,data in G.nodes(data=True):
-            f.write(f"CREATE (:{data['type']} {{name:'{n}'}});\n")
-
-        for s,t,d in G.edges(data=True):
-            f.write(
-                f"MATCH (a {{name:'{s}'}}),(b {{name:'{t}'}}) "
-                f"CREATE (a)-[:{d['label']}]->(b);\n"
-            )
-
-
-# =====================================================
-# RDF / OWL EXPORT
-# =====================================================
-
-def export_rdf(G, path):
-
-    with open(path,"w") as f:
-        for s,t,d in G.edges(data=True):
-            f.write(f":{s} :{d['label']} :{t} .\n")
 
 
 # =====================================================
@@ -198,19 +255,18 @@ def export_rdf(G, path):
 
 if __name__ == "__main__":
 
-    cnn_outputs = [
-        ("PatchyOpacity",0.82,"LowerLobe"),
-        ("GroundGlass",0.31,"LowerLobe")
-    ]
+    sign_predictions = {
 
-    G = build_graph(cnn_outputs)
+        "Opacity": 0.92,
+        "Consolidation": 0.81,
+        "Infiltration": 0.45,
+        "Inflammation": 0.63
+    }
 
-    save_static_graph(G,"results/graph.png")
 
-    save_interactive_graph(G,"results/graph.html")
+    G = build_graph(sign_predictions)
 
-    export_neo4j(G,"results/graph.cypher")
+    draw_graph(G)
 
-    export_rdf(G,"results/graph.ttl")
-
-    print("Graphs exported successfully.")
+    print("\nFINAL publication-ready knowledge graph generated.")
+    print("Saved at: results/knowledge_graph_PUBLICATION_READY.png")
