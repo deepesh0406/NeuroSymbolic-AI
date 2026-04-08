@@ -15,9 +15,7 @@ models/*.pt
 data/
 dataset/
 
-# large outputs
-results/*.html
-results/*.pth
+
 results/*.pt
 results/*.png
 results/plots/*.png
